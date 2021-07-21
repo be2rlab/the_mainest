@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="robot_ip" default="192.168.88.5" doc=""/>
+    <arg name="kinematics_config" default="/workspace/my_robot_calibration.yaml" doc=""/>
+    <arg name="rviz_config" default="/workspace/config.rviz" doc=""/>
+    
+
+    <include file="$(find ur_robot_driver)/launch/ur5e_bringup.launch" >
+        <arg name="robot_ip" value="$(arg robot_ip)" />
+        <arg name="kinematics_config" value="$(arg kinematics_config)" />
+    </include>
+
+    <!-- <include file="$(find ur5e_moveit_config)/launch/ur5e_moveit_planning_execution.launch" >ur
+        <arg name="sim" value="false" />
+        <arg name="debug" value="false" />
+    </include> -->
+
+    <include file="$(find ur5e_moveit_config)/launch/moveit_rviz.launch" >
+        <arg name="rviz_config" value="$(arg rviz_config)" />
+    </include>
+    
+    <include file="$(find uhvat_ros_driver)/launch/driver_node.launch" />
+
+    
+
+
+</launch>
