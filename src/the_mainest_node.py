@@ -4,8 +4,14 @@ from typing import Mapping
 import rospy
 import numpy as np
 
-from msdp.srv import GoalPoses, JSPosition, CartPosition
+from std_msgs.msg import String
+from std_msgs.msg import Float32MultiArray
+
+from msdp.srv import GoalPoses, JSPosition, JSPositionResponse, CartPosition, CartPositionResponse
 from uhvat_ros_driver.srv import SetGripperState
+
+from the_mainest.srv import Give, ObbArr
+
 
 CANDLE_POSE = [0, -90, 0, -90, 0, 0]
 MAPPING_POSES = [
@@ -49,9 +55,12 @@ class TaskInterface(object):
         return resp
 
     def initial(self):
-        self.go_to_js(np.array(CANDLE_POSE) * radians)
+        return self.go_to_js(np.array(CANDLE_POSE) * radians)
 
     def mapping(self):
+        """
+        Go throw set of predefined points
+        """
         resp = False
         for i in range(len(MAPPING_POSES)):
             print(i)
@@ -77,27 +86,64 @@ class TaskInterface(object):
             return -1
     
     def gripper(self, state):
-        # return self.call_srv('gripper_state', SetGripperState , state)
+        """
+        :state in [0,1,2,3,4,5,6]
+        [0,1,2,3] -- positions from open to close
+        [4,5,6] -- force closing from low force to high force
+        """
         rospy.wait_for_service('gripper_state')
         try:
             srv_obj = rospy.ServiceProxy('gripper_state', SetGripperState)
-            resp = srv_obj(state)
-            return resp
+            srv_obj(state)
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
-            return -1
+
+    def call_give(self, obj):
+        """ 
+        Sets the object `obj` to `grasping_vision` node for 
+        boundingbox estimation.
+        """
+        rospy.wait_for_service('give')
+        try:
+            srv_obj = rospy.ServiceProxy('give', Give)
+            resp = srv_obj(String(obj))
+        except rospy.ServiceException as e:
+            print(f"Service call failed: {e}")
+
+    def call_obb_arr_srv(self):
+        """ Returns the 12 numbers from `grasping_vision` node. """
+        rospy.wait_for_service('obb_arr_srv')
+        try:
+            srv_obj = rospy.ServiceProxy('obb_arr_srv', ObbArr)
+            resp = srv_obj()
+            return resp.data
+        except rospy.ServiceException as e:
+            print(f"Service call failed: {e}")
+
+    def call_pnp(self, p1, p2):
+        status = False
+
+        # TODO add more logic
+        status1 = self.go_to_cart(p1)
+        status2 = self.go_to_cart(p2)
+
+        status = status1 and status2
+        return status
 
 
 def main():
-    # test_js()
-    """
-     0 -- candle
-     1 -- mapping 1
-
-    """
-    
+   
     task_interface = TaskInterface()
     
+    ## Usage:
+    # status = task_interface.initial()
+    # status = task_interface.mapping()
+    # status = task_interface.gripper(0)
+    # task_interface.call_give('regbi')
+    # obb_arr = task_interface.call_obb_arr_srv()
+    # obb_arr = task_interface.call_pnp(p1, p2)
+
+
     state = 'idle'
     state_id = 0
     resp = True
