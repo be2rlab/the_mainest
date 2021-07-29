@@ -70,6 +70,8 @@ export ROS_MASTER_URI=http://$ROS_IP:11311
 
 ### Inside the docker-container for real robot stuff.
 
+0. RUN `roscore`
+
 1. Open terminal-tab on the host
 
 ```
@@ -124,10 +126,16 @@ source /ws/devel/setup.bash --extend
 roslaunch grasping_vision launch_them_all.launch
 ```
 
+```
+cexec
+python3 /ws/src/grasping_vision/scripts/command_node.py
+```
 
+```
+data: [ -0.7969973087310791, 0.6039757132530212, 0.0029355052392929792, -0.6026550531387329, -0.7955576181411743, 0.06240931153297424, -0.055372629314661026, -0.10710905492305756, 0.6363226771354675, 0.11999107897281647, 0.06754377484321594, 0.031506557017564774]
+```
 
-
-
+rosservice call /js_position_cmd "data: [0.0,-1.57,0.0,-1.57,0.0,0.0]"
 
 
 
