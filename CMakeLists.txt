@@ -35,7 +35,7 @@ include_directories(
 )
 
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS
   CATKIN_DEPENDS message_runtime)
 
 install(DIRECTORY include/the_mainest/
