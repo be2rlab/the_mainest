@@ -116,7 +116,13 @@ and call service to start `/start_me`.
 
 ### Inside the docker-container by IVAN
 
+Open a tab
 
+```
+crun
+source /ws/devel/setup.bash --extend
+roslaunch grasping_vision launch_them_all.launch
+```
 
 
 
