@@ -10,18 +10,21 @@
         <arg name="kinematics_config" value="$(arg kinematics_config)" />
     </include>
 
-    <!-- <include file="$(find ur5e_moveit_config)/launch/ur5e_moveit_planning_execution.launch" >ur
+    <include file="$(find ur5e_moveit_config)/launch/ur5e_moveit_planning_execution.launch" >ur
         <arg name="sim" value="false" />
         <arg name="debug" value="false" />
-    </include> -->
+    </include>
 
     <include file="$(find ur5e_moveit_config)/launch/moveit_rviz.launch" >
         <arg name="rviz_config" value="$(arg rviz_config)" />
     </include>
-    
-    <include file="$(find uhvat_ros_driver)/launch/driver_node.launch" />
 
-    
+    <!-- <include file="$(find the_mainest)/launch/rs_aligned_depth.launch" /> -->
+
+    <!-- <include file="$(find lazy_mapping_moveit)/launch/obstacles_to_moveit.launch" /> -->
+        
+
+    <!-- <include file="$(find uhvat_ros_driver)/launch/driver_node.launch" /> -->
 
 
 </launch>
