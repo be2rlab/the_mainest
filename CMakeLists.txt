@@ -7,6 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   message_generation
+  geometry_msgs
+  std_msgs
 )
 
 add_message_files(
@@ -25,9 +27,17 @@ add_service_files(
   GetPNPPoses.srv
 )
 
-generate_messages(DEPENDENCIES std_msgs geometry_msgs msdp)
+generate_messages(DEPENDENCIES std_msgs geometry_msgs the_mainest)
 
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
+
+catkin_package(
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS message_runtime)
+
+install(DIRECTORY include/the_mainest/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  PATTERN "*.h")

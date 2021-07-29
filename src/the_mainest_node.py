@@ -13,18 +13,21 @@ from uhvat_ros_driver.srv import SetGripperState
 from the_mainest.srv import Give, ObbArr
 
 
-CANDLE_POSE = [0, -90, 0, -90, 0, 0]
-MAPPING_POSES = [
+radians = np.pi / 180
+
+CANDLE_POSE = np.array([0, -90, 0, -90, 0, 0]) * radians
+INITIAL_POSE = np.array([-78, -107, -14, -149, 90, 12]) * radians
+
+MAPPING_POSES = np.array([
     [-70, -86, -60, -120, 145, 0],
     [-59, -75, -71, -154, 39, 46],
     [-81, -91, -113, -72, 176, -4],
     [-63, -64, -100, -137, 28, -3]
-]
-
-radians = np.pi / 180
+]) * radians
 
 TASK = [
     'idle',
+    'candle'
     'mapping',
     'initial',
     'pnp'

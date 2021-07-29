@@ -24,7 +24,7 @@
     <!-- <include file="$(find lazy_mapping_moveit)/launch/obstacles_to_moveit.launch" /> -->
         
 
-    <!-- <include file="$(find uhvat_ros_driver)/launch/driver_node.launch" /> -->
+    <include file="$(find uhvat_ros_driver)/launch/driver_node.launch" />
 
 
 </launch>
