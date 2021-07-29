@@ -1,4 +1,4 @@
-geometry_msgs/Pose pose
+string obj_id
 bool gripper_state
 ---
 bool status

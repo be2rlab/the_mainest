@@ -146,7 +146,6 @@ def main():
     # obb_arr = task_interface.call_obb_arr_srv()
     # obb_arr = task_interface.call_pnp(p1, p2)
 
-
     state = 'idle'
     state_id = 0
     resp = True
