@@ -1,4 +1,3 @@
 geometry_msgs/Pose pose
-bool gripper_state
 ---
 bool status
