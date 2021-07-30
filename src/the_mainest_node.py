@@ -21,11 +21,27 @@ radians = np.pi / 180
 CANDLE_POSE = np.array([0, -90, 0, -90, 0, 0]) * radians
 INITIAL_POSE = np.array([-78, -107, -14, -149, 90, 12]) * radians
 
+    # [-59, -75, -71, -154, 39, 46],
+    #     [-63, -64, -100, -137, 28, -3],
+    # [-81, -91, -113, -72, 176, -4],
+
 MAPPING_POSES = np.array([
     [-70, -86, -60, -120, 145, 0],
-    [-59, -75, -71, -154, 39, 46],
-    [-81, -91, -113, -72, 176, -4],
-    [-63, -64, -100, -137, 28, -3]
+    [-63, -64, -100, -137, 28, -3],
+    
+
+    [0, -90, 0, -90, 0, 0],
+    [-161, -96, -34, -145, 54, 3],
+    [0, -90, 0, -90, 0, 0],
+    [-22, -73, -59, -141, 143, 3],
+    [0, -90, 0, -90, 0, 0],
+
+    [-182, -43, -96, -100, 98, 3],
+    [0, -90, 0, -90, 0, 0],
+    [-3, -35, -96, -105, 100, 3],
+    [0, -90, 0, -90, 0, 0],
+    [-86, -113, 28, -33, -96, 3]
+
 ]) * radians
 
 TASK = [
@@ -65,8 +81,8 @@ class TaskInterface(object):
         # ]
 
         p_box = Pose()
-        p_box.position.x = 0.4
-        p_box.position.y = 0.0
+        p_box.position.x = 0.6
+        p_box.position.y = -0.05
         p_box.position.z = 0.6
         p_box.orientation.x = -np.sqrt(2)/2
         p_box.orientation.y = np.sqrt(2)/2
@@ -74,8 +90,8 @@ class TaskInterface(object):
         p_box.orientation.w = 0
 
         p_mouse = Pose()
-        p_mouse.position.x = -0.4
-        p_mouse.position.y = 0.0
+        p_mouse.position.x = -0.55
+        p_mouse.position.y = 0.05
         p_mouse.position.z = 0.6
         p_mouse.orientation.x = np.sqrt(2)/2
         p_mouse.orientation.y = np.sqrt(2)/2
@@ -84,12 +100,17 @@ class TaskInterface(object):
 
         p_regbi = Pose()
         p_regbi.position.x = 0
-        p_regbi.position.y = -0.4
-        p_regbi.position.z = 0.6
-        p_regbi.orientation.x = 0
-        p_regbi.orientation.y = 1
+        p_regbi.position.y = -0.50
+        p_regbi.position.z = 0.65
+        # p_regbi.orientation.x = 0
+        # p_regbi.orientation.y = 1
+        # p_regbi.orientation.z = 0
+        # p_regbi.orientation.w = 0
+        p_regbi.orientation.x = np.sqrt(2)/2
+        p_regbi.orientation.y = np.sqrt(2)/2
         p_regbi.orientation.z = 0
         p_regbi.orientation.w = 0
+
 
 
         # 'box': Pose(Point(0.54, -0.15, 0.65), Quaternion(-0.6162, 0.7874, -0.0086, 0.0089)),
@@ -100,8 +121,6 @@ class TaskInterface(object):
             'regbi': p_regbi
         }
 
-
-
     def pnp(self, obj_name, grasp_pose):
         resp = True
 
@@ -110,7 +129,7 @@ class TaskInterface(object):
 
             if self.pnp_state == 'idl' and resp:
                 resp = False
-                wait_for(5)
+                wait_for(1)
                 self.pnp_state, resp = 'p1*', True
                 # self.pnp_state, resp = 'p2*', True
 
@@ -119,7 +138,7 @@ class TaskInterface(object):
                 resp = False
                 
                 p1 = copy.deepcopy(grasp_pose)
-                p1.position.z = p1.position.z + 0.5
+                p1.position.z = p1.position.z + 0.3
 
                 resp = self.go_to_cart(p1)
                 self.pnp_state = 'p1'
@@ -128,16 +147,35 @@ class TaskInterface(object):
                 resp = False
 
                 p1_ = copy.deepcopy(grasp_pose)
-                p1_.position.z = p1_.position.z + 0.3
+                zz = 0.15
+                if obj_name == 'regbi':
+                    zz = 0.12
+                elif obj_name == 'box':
+                    zz = 0.14
+                elif obj_name == 'mouse':
+                    zz = 0.16
+
+                p1_.position.z = p1_.position.z + zz
 
                 resp = self.go_to_cart(p1_)
                 self.pnp_state = 'gripper_close'
+
 
             elif self.pnp_state == 'gripper_close' and resp:
                 resp = False
                 self.gripper(6)
                 wait_for(2)
-                self.pnp_state, resp = 'attach_obj', True
+                self.pnp_state, resp = 'p1**', True
+
+            elif self.pnp_state == 'p1**' and resp:
+                resp = False
+
+                p1_.position.z = p1_.position.z + 0.3
+
+                resp = self.go_to_cart(p1_)
+
+                self.pnp_state = 'attach_obj'
+
 
             elif self.pnp_state == 'attach_obj' and resp:
                 resp = False
@@ -157,22 +195,33 @@ class TaskInterface(object):
                 resp = False
 
                 p2 = self.BOXES[obj_name]
-                p2.position.z = p2.position.z - 0.1
+                p2.position.z = p2.position.z - 0.05
 
                 resp = self.go_to_cart(p2)
                 self.pnp_state = 'gripper_open'
 
             elif self.pnp_state == 'gripper_open' and resp:
                 resp = False
-                self.gripper(0)
+                self.gripper(1)
                 wait_for(2)
-                self.pnp_state, resp = 'dettach_obj', True
+                self.gripper(3)
+                self.pnp_state, resp = 'p2**', True
+
+            elif self.pnp_state == 'p2**' and resp:
+                resp = False
+
+                p2 = self.BOXES[obj_name]
+                p2.position.z = p2.position.z + 0.0
+
+                resp = self.go_to_cart(p2)
+                self.pnp_state = 'dettach_obj'
 
             elif self.pnp_state == 'dettach_obj' and resp:
                 resp = False
                 resp = self.call_attach_obj('obj', False)
                 self.pnp_state = 'exit'
             elif self.pnp_state == 'exit' and resp:
+                self.pnp_state = 'idl'
                 return True
 
     def initial(self):
@@ -183,11 +232,15 @@ class TaskInterface(object):
         Go throw set of predefined points
         """
         resp = False
-        for i in range(len(MAPPING_POSES)):
+        # for i in range(len(MAPPING_POSES)):
+        i = 0
+        while i < len(MAPPING_POSES):
             print(i)
-            resp = self.go_to_js(np.array(MAPPING_POSES[i]) * radians)
+            resp = self.go_to_js(MAPPING_POSES[i])
+            i = i + 1
             if not resp:
                 rospy.logwarn(f"Mapping pose {i} do not feasible")
+
         return resp
 
     def go_to_cart(self, pose):
@@ -223,7 +276,7 @@ class TaskInterface(object):
             return resp.status
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
-            return -1
+            return False
 
     def call_srv(self, srv_name, srv_type, q):
         rospy.wait_for_service(srv_name)
@@ -233,7 +286,7 @@ class TaskInterface(object):
             return resp.status
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
-            return -1
+            return False
     
     def gripper(self, state):
         """
@@ -337,18 +390,30 @@ def main():
             key = input('Press any key to start or `q` to exit\n')
             if key == 'q':
                 break
-            state, resp = 'candle', True
+            # state, resp = 'candle', True
+            state, resp = 'initial', True
+
         elif state == 'candle' and resp:
             "CANDLE STATE"
             resp = False
-            # resp = task_interface.go_to_js(np.array(CANDLE_POSE))
+            task_interface.gripper(3)
+            resp = task_interface.go_to_js(np.array(CANDLE_POSE))
             wait_for(1)
-            state, resp = 'initial', True
+            state= 'mapping'
+
+        elif state == 'mapping' and resp:
+            resp = False
+            resp = task_interface.mapping()
+            state = 'initial'
+
         elif state == 'initial' and resp:
             "INITIAL STATE"
             resp = False
             resp = task_interface.go_to_js(np.array(INITIAL_POSE))
+            task_interface.gripper(0)
+            obj_name = ''
             state = 'give'
+
         elif state == 'give' and resp:
             "GIVE STATE"
             resp = False
@@ -391,6 +456,7 @@ def main():
                     # state, resp = 'idle', True
                 else:
                     rospy.logwarn("PnP STATE: the grasp pose is bad")
+                    resp = False
             else:
                 rospy.logwarn("call the service `get_pnp_poses` one more times...")
                 resp = True
@@ -403,7 +469,7 @@ def main():
             p1 = Pose()
             data12numbers = []
             obj_name = ''
-            state = 'idle'
+            state = 'initial'
 
         rate.sleep()
 
