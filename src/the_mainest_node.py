@@ -3,13 +3,14 @@
 from typing import Mapping
 import rospy
 import numpy as np
+import copy
 from rospy.core import loginfo
 
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Pose, Point, Quaternion
 
-from msdp.srv import GoalPoses, JSPosition, JSPositionResponse, CartPosition, CartPositionResponse
+from the_mainest.srv import GoalPoses, JSPosition, JSPositionResponse, CartPosition, CartPositionResponse
 from uhvat_ros_driver.srv import SetGripperState
 
 from the_mainest.srv import Give, ObbArr, GetPNPPoses, AttachObj
@@ -35,14 +36,6 @@ TASK = [
     'pnp'
 ]
 
-# TODO set the points
-BOXES = {
-    'box': Pose(Point(), Quaternion()),
-    'mouse': Pose(Point(), Quaternion()),
-    'regbi': Pose(Point(), Quaternion()),
-    'cup': Pose(Point(), Quaternion())
-}
-
 
 def wait_for(sec):
     rospy.loginfo(f"Wait [{sec}] sec")
@@ -54,6 +47,9 @@ class TaskInterface(object):
 
     def __init__(self) -> None:
         super().__init__()
+        
+        rospy.wait_for_service('cart_position_cmd')
+        self.srv_obj = rospy.ServiceProxy('cart_position_cmd', CartPosition)
         
         self.pnp_state = 'idl'
         # [
@@ -68,6 +64,44 @@ class TaskInterface(object):
         #     'dettach_obj'
         # ]
 
+        p_box = Pose()
+        p_box.position.x = 0.4
+        p_box.position.y = 0.0
+        p_box.position.z = 0.6
+        p_box.orientation.x = -np.sqrt(2)/2
+        p_box.orientation.y = np.sqrt(2)/2
+        p_box.orientation.z = 0
+        p_box.orientation.w = 0
+
+        p_mouse = Pose()
+        p_mouse.position.x = -0.4
+        p_mouse.position.y = 0.0
+        p_mouse.position.z = 0.6
+        p_mouse.orientation.x = np.sqrt(2)/2
+        p_mouse.orientation.y = np.sqrt(2)/2
+        p_mouse.orientation.z = 0
+        p_mouse.orientation.w = 0
+
+        p_regbi = Pose()
+        p_regbi.position.x = 0
+        p_regbi.position.y = -0.4
+        p_regbi.position.z = 0.6
+        p_regbi.orientation.x = 0
+        p_regbi.orientation.y = 1
+        p_regbi.orientation.z = 0
+        p_regbi.orientation.w = 0
+
+
+        # 'box': Pose(Point(0.54, -0.15, 0.65), Quaternion(-0.6162, 0.7874, -0.0086, 0.0089)),
+        # TODO set the points
+        self.BOXES = {
+            'box': p_box,
+            'mouse': p_mouse,
+            'regbi': p_regbi
+        }
+
+
+
     def pnp(self, obj_name, grasp_pose):
         resp = True
 
@@ -77,74 +111,67 @@ class TaskInterface(object):
             if self.pnp_state == 'idl' and resp:
                 resp = False
                 wait_for(5)
-                state, resp = 'p1*', True
+                self.pnp_state, resp = 'p1*', True
+                # self.pnp_state, resp = 'p2*', True
 
             elif self.pnp_state == 'p1*' and resp:
                 # p1* STATE -- over object
                 resp = False
-
-                p1 = grasp_pose
+                
+                p1 = copy.deepcopy(grasp_pose)
                 p1.position.z = p1.position.z + 0.5
-                grasp_pose_safe = CartPosition(p1)
 
-                r = self.go_to_cart(grasp_pose_safe)
-                resp = r.status
-                state = 'p1'
+                resp = self.go_to_cart(p1)
+                self.pnp_state = 'p1'
 
             elif self.pnp_state == 'p1' and resp:
                 resp = False
 
-                p1 = grasp_pose
-                p1.position.z = p1.position.z + 0.3
-                grasp_pose = CartPosition(p1)
+                p1_ = copy.deepcopy(grasp_pose)
+                p1_.position.z = p1_.position.z + 0.3
 
-                r = self.go_to_cart(grasp_pose)
-                resp = r.status
-                state = 'gripper_close'
+                resp = self.go_to_cart(p1_)
+                self.pnp_state = 'gripper_close'
 
             elif self.pnp_state == 'gripper_close' and resp:
                 resp = False
                 self.gripper(6)
                 wait_for(2)
-                state, resp = 'attach_obj', True
+                self.pnp_state, resp = 'attach_obj', True
 
             elif self.pnp_state == 'attach_obj' and resp:
                 resp = False
                 resp = self.call_attach_obj('obj', True)
-                state = 'p2*'
+                self.pnp_state = 'p2*'
 
             elif self.pnp_state == 'p2*' and resp:
                 resp = False
+                
+                p2 = self.BOXES[obj_name]
+                p2.position.z = p2.position.z
 
-                p2 = BOXES[obj_name]
-                p2.position.z = p2.position.z + 0.5
-                ungrasp_pose = CartPosition(p2)
-
-                r = self.go_to_cart(ungrasp_pose)
-                resp = r.status
-                state = 'p2'
+                resp = self.go_to_cart(p2)
+                self.pnp_state = 'p2'
 
             elif self.pnp_state == 'p2' and resp:
                 resp = False
 
-                p2 = BOXES[obj_name]
-                p2.position.z = p2.position.z + 0.3
-                ungrasp_pose = CartPosition(p2)
+                p2 = self.BOXES[obj_name]
+                p2.position.z = p2.position.z - 0.1
 
-                r = self.go_to_cart(ungrasp_pose)
-                resp = r.status
-                state = 'gripper_open'
+                resp = self.go_to_cart(p2)
+                self.pnp_state = 'gripper_open'
 
             elif self.pnp_state == 'gripper_open' and resp:
                 resp = False
                 self.gripper(0)
                 wait_for(2)
-                state, resp = 'dettach_obj', True
+                self.pnp_state, resp = 'dettach_obj', True
 
             elif self.pnp_state == 'dettach_obj' and resp:
                 resp = False
                 resp = self.call_attach_obj('obj', False)
-                state = 'exit'
+                self.pnp_state = 'exit'
             elif self.pnp_state == 'exit' and resp:
                 return True
 
@@ -164,10 +191,39 @@ class TaskInterface(object):
         return resp
 
     def go_to_cart(self, pose):
-        return self.call_srv('cart_position_cmd', CartPosition, pose)
+        # return self.call_srv('cart_position_cmd', CartPosition, pose)
+        
+        try:
+            resp = self.srv_obj(pose)
+            return resp.status
+        except rospy.ServiceException as e:
+            print(f"Service call failed: {e}")
+            return False
+
+
+        # rospy.wait_for_service('cart_position_cmd')
+        # try:
+        #     srv_obj = rospy.ServiceProxy('cart_position_cmd', CartPosition)
+        #     print(srv_obj)
+        #     print(type(pose), pose)
+        #     resp = srv_obj(pose)
+        #     return resp.status
+        # except rospy.ServiceException as e:
+        #     print(f"Service call failed: {e}")
+        #     return False
+
 
     def go_to_js(self, q):
-        return self.call_srv('js_position_cmd', JSPosition, q)
+        # return self.call_srv('js_position_cmd', JSPosition, q)
+        rospy.wait_for_service('js_position_cmd')
+        print(type(q), q.tolist())
+        try:
+            srv_obj = rospy.ServiceProxy('js_position_cmd', JSPosition)
+            resp = srv_obj(q.tolist())
+            return resp.status
+        except rospy.ServiceException as e:
+            print(f"Service call failed: {e}")
+            return -1
 
     def call_srv(self, srv_name, srv_type, q):
         rospy.wait_for_service(srv_name)
@@ -222,7 +278,9 @@ class TaskInterface(object):
         rospy.wait_for_service('get_pnp_poses')
         try:
             srv_obj = rospy.ServiceProxy('get_pnp_poses', GetPNPPoses)
-            resp = srv_obj(Float32MultiArray(data))
+            # f = Float32MultiArray()
+            # f.data = data
+            resp = srv_obj(data)
             return resp.p1
         except rospy.ServiceException as e:
             print(f"Service call failed: {e}")
@@ -266,6 +324,7 @@ def main():
     obj_name = ''
     data12numbers = []
     cnt_try_give = 0
+    p1 = Pose()
 
     rate = rospy.Rate(30)
     while not rospy.is_shutdown():
@@ -288,7 +347,7 @@ def main():
         elif state == 'initial' and resp:
             "INITIAL STATE"
             resp = False
-            resp = True # task_interface.go_to_js(np.array(INITIAL_POSE))
+            resp = task_interface.go_to_js(np.array(INITIAL_POSE))
             state = 'give'
         elif state == 'give' and resp:
             "GIVE STATE"
@@ -324,10 +383,12 @@ def main():
             "GET PnP POSES STATE"
             resp = False
             p1 = task_interface.call_get_pnp_poses(data12numbers)
-            
+            print('**********', p1)
+
             if type(p1) is Pose:   # check for Pose data validity
                 if type(p1.position.x) is float:
                     state, resp = 'pnp', True
+                    # state, resp = 'idle', True
                 else:
                     rospy.logwarn("PnP STATE: the grasp pose is bad")
             else:
